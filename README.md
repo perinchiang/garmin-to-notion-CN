@@ -64,4 +64,4 @@
 
 本项目遵循 **MIT License** 开源协议。
 Original work Copyright (c) 2024 chloevoyer.
-Modified work Copyright (c) 2026 [Your Name/Studio].
+Modified work Copyright (c) 2026 [perinchiang]p.
