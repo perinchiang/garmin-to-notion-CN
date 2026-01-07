@@ -1,0 +1,1 @@
+# garmin-to-notion-CN
