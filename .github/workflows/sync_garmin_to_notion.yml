@@ -5,6 +5,12 @@ on:
     # 每天北京时间早上 9 点运行 (UTC 1:00)
     - cron: '0 1 * * *'
   workflow_dispatch: # 允许手动点
+    inputs:
+      backfill_days:
+        description: '回填最近多少天的步数与睡眠（默认 1）'
+        required: false
+        default: '1'
+        type: string
 
 env:
   TZ: 'Asia/Shanghai'
@@ -31,6 +37,7 @@ jobs:
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
           NOTION_AGENT_SIGNALS_TOKEN: ${{ secrets.NOTION_AGENT_SIGNALS_TOKEN }}
           NOTION_AGENT_SIGNALS_DATA_SOURCE_ID: ${{ secrets.NOTION_AGENT_SIGNALS_DATA_SOURCE_ID }}
+          GARMIN_BACKFILL_DAYS: ${{ inputs.backfill_days || '1' }}
           TZ: 'Asia/Shanghai'
         run: |
           python garmin-agent-signals.py

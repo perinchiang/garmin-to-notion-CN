@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import os
 import time
-from datetime import date
+from datetime import date, timedelta
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -96,7 +96,7 @@ def signal(name: str, external_id: str, signal_type: str, observed_on: str, evid
     return properties
 
 
-def collect(garmin: Garmin) -> list[tuple[str, dict]]:
+def collect(garmin: Garmin, backfill_days: int) -> list[tuple[str, dict]]:
     rows: list[tuple[str, dict]] = []
     for activity in garmin.get_activities(0, 1000):
         activity_id = activity.get("activityId")
@@ -113,33 +113,36 @@ def collect(garmin: Garmin) -> list[tuple[str, dict]]:
         activity_kind = next((candidate for candidate in ("running", "walking", "cycling", "swimming", "strength") if candidate in type_key), "other")
         rows.append((f"garmin-activity:{activity_id}", signal(activity_name, f"garmin-activity:{activity_id}", "activity", observed, evidence, f"https://connect.garmin.cn/modern/activity/{activity_id}", activity_type=activity_kind, distance_km=round(distance, 2), duration_min=round(duration, 1), avg_heart_rate=activity.get("averageHR"))))
 
-    today = date.today().isoformat()
-    daily_steps = garmin.get_daily_steps(today, today)
-    if daily_steps:
-        steps = daily_steps[0]
-        rows.append((f"garmin-steps:{today}", signal(
-            f"Garmin steps {today}", f"garmin-steps:{today}", "activity", today,
-            f"Garmin daily steps; total={steps.get('totalSteps', 0)}; distance={float(steps.get('totalDistance') or 0) / 1000:.2f} km.",
-            activity_type="steps", steps=steps.get("totalSteps"), distance_km=round(float(steps.get("totalDistance") or 0) / 1000, 2),
-        )))
+    for offset in range(max(1, backfill_days)):
+        day = date.today() - timedelta(days=offset)
+        day_text = day.isoformat()
+        daily_steps = garmin.get_daily_steps(day_text, day_text)
+        if daily_steps:
+            steps = daily_steps[0]
+            rows.append((f"garmin-steps:{day_text}", signal(
+                f"Garmin steps {day_text}", f"garmin-steps:{day_text}", "activity", day_text,
+                f"Garmin daily steps; total={steps.get('totalSteps', 0)}; distance={float(steps.get('totalDistance') or 0) / 1000:.2f} km.",
+                activity_type="steps", steps=steps.get("totalSteps"), distance_km=round(float(steps.get("totalDistance") or 0) / 1000, 2),
+            )))
 
-    sleep = garmin.get_sleep_data(today) or {}
-    dto = sleep.get("dailySleepDTO") or {}
-    sleep_date = dto.get("calendarDate") or today
-    total_sleep = sum(float(dto.get(key) or 0) for key in ("deepSleepSeconds", "lightSleepSeconds", "remSleepSeconds"))
-    if dto and total_sleep:
-        rows.append((f"garmin-sleep:{sleep_date}", signal(
-            f"Garmin sleep {sleep_date}", f"garmin-sleep:{sleep_date}", "activity", sleep_date,
-            f"Garmin sleep summary; total={total_sleep / 3600:.1f} h; deep={float(dto.get('deepSleepSeconds') or 0) / 3600:.1f} h; REM={float(dto.get('remSleepSeconds') or 0) / 3600:.1f} h.",
-            activity_type="sleep", sleep_hours=round(total_sleep / 3600, 1), deep_sleep_hours=round(float(dto.get("deepSleepSeconds") or 0) / 3600, 1), rem_sleep_hours=round(float(dto.get("remSleepSeconds") or 0) / 3600, 1),
-        )))
+        sleep = garmin.get_sleep_data(day_text) or {}
+        dto = sleep.get("dailySleepDTO") or {}
+        sleep_date = dto.get("calendarDate") or day_text
+        total_sleep = sum(float(dto.get(key) or 0) for key in ("deepSleepSeconds", "lightSleepSeconds", "remSleepSeconds"))
+        if dto and total_sleep:
+            rows.append((f"garmin-sleep:{sleep_date}", signal(
+                f"Garmin sleep {sleep_date}", f"garmin-sleep:{sleep_date}", "activity", sleep_date,
+                f"Garmin sleep summary; total={total_sleep / 3600:.1f} h; deep={float(dto.get('deepSleepSeconds') or 0) / 3600:.1f} h; REM={float(dto.get('remSleepSeconds') or 0) / 3600:.1f} h.",
+                activity_type="sleep", sleep_hours=round(total_sleep / 3600, 1), deep_sleep_hours=round(float(dto.get("deepSleepSeconds") or 0) / 3600, 1), rem_sleep_hours=round(float(dto.get("remSleepSeconds") or 0) / 3600, 1),
+            )))
     return rows
 
 
 def main() -> None:
     garmin = Garmin(os.environ["GARMIN_EMAIL"], os.environ["GARMIN_PASSWORD"], is_cn=True)
     garmin.login()
-    rows = collect(garmin)
+    backfill_days = int(os.environ.get("GARMIN_BACKFILL_DAYS", "1"))
+    rows = collect(garmin, backfill_days)
     known = existing_pages()
     created = updated = 0
     for external_id, properties in rows:
