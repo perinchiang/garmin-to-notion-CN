@@ -13,7 +13,7 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -25,20 +25,12 @@ jobs:
           python -m pip install --upgrade pip setuptools wheel
           pip install -r requirements.txt
 
-      - name: Run script
+      - name: Sync Garmin health facts to Agent Signals
         env:
           GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-          # 确保这里用的是 CN 数据库 ID
-          NOTION_DB_ID: ${{ secrets.NOTION_CN_DB_ID }}
-          NOTION_PR_DB_ID: ${{ secrets.NOTION_CN_PR_DB_ID }}
-          NOTION_STEPS_DB_ID: ${{ secrets.NOTION_CN_STEPS_DB_ID }}
-          NOTION_SLEEP_DB_ID: ${{ secrets.NOTION_CN_SLEEP_DB_ID }}
+          NOTION_AGENT_SIGNALS_TOKEN: ${{ secrets.NOTION_AGENT_SIGNALS_TOKEN }}
+          NOTION_AGENT_SIGNALS_DATA_SOURCE_ID: ${{ secrets.NOTION_AGENT_SIGNALS_DATA_SOURCE_ID }}
           TZ: 'Asia/Shanghai'
         run: |
-          # 👇 确保这里是这 4 行，而不是 backfill 或 debug
-          python garmin-activities.py
-          python personal-records.py
-          python daily-steps.py
-          python sleep-data.py
+          python garmin-agent-signals.py
