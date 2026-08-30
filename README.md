@@ -27,7 +27,9 @@
 - **手动开关**：通过 GitHub Actions 手动触发，安全可控，不影响日常自动更新。
 
 ### 3. 自动化零感同步
-- 配置完成后，每天凌晨自动运行，当你醒来时，昨天的健康数据已经安静地躺在 Notion 里了。
+- 配置完成后，每天自动将运动、步数和睡眠事实写入 Pat 的 `Agent Signals` 数据库。
+- 每条记录带有稳定的 `External ID`，重复运行只会跳过已存在的信号。
+- 不再写入旧的四个 Garmin 专用数据库，也不上传原始遥测或分析结论。
 
 ---
 
@@ -42,7 +44,7 @@
    - 进入 `Actions` 页面。
    - 选择 **Manual History Backfill (手动回填历史)**。
    - 点击 `Run workflow`，等待片刻，你的 Notion 将被填满历史数据。
-4. **享受自动同步**：此后，`Sync Garmin to Notion` 脚本将每天自动为你更新数据。
+4. **享受自动同步**：此后，`Sync Garmin to Notion` 工作流将每天自动更新 `Agent Signals`。
 
 ---
 
@@ -52,11 +54,8 @@
 | --- | --- |
 | `GARMIN_EMAIL` | 佳明账号邮箱 |
 | `GARMIN_PASSWORD` | 佳明账号密码 |
-| `NOTION_TOKEN` | Notion Integration Token |
-| `NOTION_CN_DB_ID` | 运动记录数据库 ID |
-| `NOTION_CN_STEPS_DB_ID` | 每日步数数据库 ID |
-| `NOTION_CN_SLEEP_DB_ID` | 睡眠监测数据库 ID |
-| `NOTION_CN_PR_DB_ID` | 个人最佳纪录 (PR) 数据库 ID |
+| `NOTION_AGENT_SIGNALS_TOKEN` | Agent Signals 数据源的 Notion Integration Token |
+| `NOTION_AGENT_SIGNALS_DATA_SOURCE_ID` | Agent Signals 的 data source ID |
 
 ---
 
